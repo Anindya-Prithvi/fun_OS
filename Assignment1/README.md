@@ -5,7 +5,7 @@
 
 Q1. Write the `cp’ program that takes arguments as source and destination filenames and copies the source to the destination. (use fread and fwrite).
 
-A1. This program taken a total of 2 arguments, the first being the source and second being the destination. It also has minor error handling like invalid args, inoperable destination/source. The idea is to open the source and destination and read, write respectively. Then read a single byte (char) and write to the other file. This will continue till fread returns 1 (i.e. successfully read), otherwise it stops and closes the files. If the operation is a success it also prints an ascii emoji.
+A1. This program takes a total of 2 arguments, the first being the source and second being the destination. It also has minor error handling like invalid args, inoperable destination/source. The idea is to open the source and destination as read, write respectively. Then read a single byte (char) and write to the other file. This will continue till fread returns 1 (i.e. successfully read), otherwise it stops and closes the files. If the operation is a success it also prints an ascii emoji. On windows, if wd contains cp.exe, `cp source1 folder1/dest.exten` would do the work, otherwise add it to PATH variable. On linux, set permissions (chmod 777) on the generated .out/.exe file and run by prefixing `./` to the rest command.
 ___
 
 Q2. Store a 256-bit unsigned integer number on a 32 byte character array. Add two such 256-bit numbers.
