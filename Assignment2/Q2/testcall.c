@@ -6,10 +6,10 @@
 #define SYS_memcpy 548
 
 int main(){
-	double arr[4][3] = {{1.24,		2.234,		3.345664},
-						{2.123456,	3.300240,	4.32445345},
-						{3.1415923,	4.23894583,	5.23298348},
-						{4.0001,	5.23425422,	6.6969669}};
+	double arr[4][3] = {	{1.24,		2.234,		3.345664},
+				{2.123456,	3.300240,	4.32445345},
+				{3.1415923,	4.23894583,	5.23298348},
+				{4.0001,	5.23425422,	6.6969669}	};
 	//declared floating point matrix
 
 	double* copyto = malloc(sizeof(arr));
@@ -23,7 +23,7 @@ int main(){
 	//second arg: cells_to_copy
 	//third arg: copy_to location
 
-	printf("eval: %d\n", syscall(SYS_memcpy, arr, 12, copyto));
+	printf("eval: %p\n", syscall(SYS_memcpy, arr, 12, copyto));
 
 	//declare iterator
 	int i;

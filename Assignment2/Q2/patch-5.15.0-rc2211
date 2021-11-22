@@ -1,0 +1,44 @@
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index 18b5500ea..69d104138 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -415,3 +415,4 @@
+ 547	x32	pwritev2		compat_sys_pwritev64v2
+ # This is the end of the legacy x32 range.  Numbers 548 and above are
+ # not special and are not to be used for x32-specific syscalls.
++548	64	kernel_2d_memcpy	sys_kernel_2d_memcpy
+diff --git a/kernel/sys.c b/kernel/sys.c
+index 8fdac0d90..2437584df 100644
+--- a/kernel/sys.c
++++ b/kernel/sys.c
+@@ -200,6 +200,30 @@ static int set_one_prio(struct task_struct *p, int niceval, int error)
+ 	return error;
+ }
+ 
++SYSCALL_DEFINE3(kernel_2d_memcpy, long*, from_matr, unsigned long, cells, long*, to_usermat)
++{
++	unsigned long itr;
++	long* pointer_to_usermat = to_usermat;
++	long temp[1];
++
++	if(access_ok(from_matr, cells)==0) {
++		return -EFAULT;
++	}
++	if(access_ok(to_usermat, cells)==0) {
++		return -EFAULT;
++	}
++
++	for(itr=0; itr<cells; itr++) {
++		if(__copy_from_user(temp, from_matr++, 8)!=0){
++			return -EFAULT;
++		}
++		if(__copy_to_user(pointer_to_usermat++, temp, 8)!=0){
++			return -EFAULT;
++		}
++	}
++	return (long) to_usermat;
++}
++
+ SYSCALL_DEFINE3(setpriority, int, which, int, who, int, niceval)
+ {
+ 	struct task_struct *g, *p;
