@@ -1,0 +1,102 @@
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index 18b5500ea..a057cdaf9 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -415,3 +415,5 @@
+ 547	x32	pwritev2		compat_sys_pwritev64v2
+ # This is the end of the legacy x32 range.  Numbers 548 and above are
+ # not special and are not to be used for x32-specific syscalls.
++
++548	common	rtdelay			sys_rtdelay
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index c1a927dde..fd0812aff 100644
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -537,6 +537,7 @@ struct sched_entity {
+ 	u64				prev_sum_exec_runtime;
+ 
+ 	u64				nr_migrations;
++	u64				delay_ms;
+ 
+ 	struct sched_statistics		statistics;
+ 
+diff --git a/kernel/sched/core.c b/kernel/sched/core.c
+index f21714ea3..cc9287fb2 100644
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -4188,6 +4188,7 @@ static void __sched_fork(unsigned long clone_flags, struct task_struct *p)
+ 	p->se.prev_sum_exec_runtime	= 0;
+ 	p->se.nr_migrations		= 0;
+ 	p->se.vruntime			= 0;
++	p->se.delay_ms			= 0;
+ 	INIT_LIST_HEAD(&p->se.group_node);
+ 
+ #ifdef CONFIG_FAIR_GROUP_SCHED
+diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
+index f6a05d9b5..92f5e98e7 100644
+--- a/kernel/sched/fair.c
++++ b/kernel/sched/fair.c
+@@ -825,6 +825,7 @@ static void update_tg_load_avg(struct cfs_rq *cfs_rq)
+ static void update_curr(struct cfs_rq *cfs_rq)
+ {
+ 	struct sched_entity *curr = cfs_rq->curr;
++	struct task_struct *tt;
+ 	u64 now = rq_clock_task(rq_of(cfs_rq));
+ 	u64 delta_exec;
+ 
+@@ -844,6 +845,13 @@ static void update_curr(struct cfs_rq *cfs_rq)
+ 	schedstat_add(cfs_rq->exec_clock, delta_exec);
+ 
+ 	curr->vruntime += calc_delta_fair(delta_exec, curr);
++	if(curr->delay_ms){
++		printk(KERN_INFO "same nice exec_start: %llu\n",curr->exec_start);
++		tt = container_of(curr, struct task_struct, se);
++		printk(KERN_INFO "the pid being: %d\n", tt->pid);
++		curr->vruntime += curr->vruntime + curr->delay_ms; //redblack tree
++		//double | rebalance
++	}
+ 	update_min_vruntime(cfs_rq);
+ 
+ 	if (entity_is_task(curr)) {
+diff --git a/kernel/sys.c b/kernel/sys.c
+index 8fdac0d90..1d1e89b7f 100644
+--- a/kernel/sys.c
++++ b/kernel/sys.c
+@@ -264,6 +264,37 @@ SYSCALL_DEFINE3(setpriority, int, which, int, who, int, niceval)
+ 	return error;
+ }
+ 
++/*
++ * set rtdelay for "who" with value "by"
++ */
++SYSCALL_DEFINE2(rtdelay, int, who, u64, by)
++{
++	struct task_struct *p;
++	long niceval, retval = -ESRCH; //i.e. didn't find task
++
++	rcu_read_lock(); //read the docs, reading critical section
++	read_lock(&tasklist_lock);
++	p = find_task_by_vpid(who);
++	if(p) {
++		niceval = task_nice(p);
++		printk(KERN_INFO "delay before %llu\n", p->se.delay_ms);
++		p->se.delay_ms = by*1000000;
++		printk(KERN_INFO "forced delay: %llu\n",p->se.delay_ms);
++		for_each_process(p)
++		{
++			if(task_nice(p)==niceval){
++				if(p->se.delay_ms==0){
++					p->se.delay_ms=1;
++				}
++			}
++		}
++		retval = 0;
++	}
++	read_unlock(&tasklist_lock);
++	rcu_read_unlock();
++	return retval;
++}
++
+ /*
+  * Ugh. To avoid negative return values, "getpriority()" will
+  * not return the normal nice-value, but a negated value that
