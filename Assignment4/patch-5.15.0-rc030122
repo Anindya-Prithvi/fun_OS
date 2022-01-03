@@ -1,0 +1,128 @@
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index 18b5500ea..3d1729703 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -415,3 +415,6 @@
+ 547	x32	pwritev2		compat_sys_pwritev64v2
+ # This is the end of the legacy x32 range.  Numbers 548 and above are
+ # not special and are not to be used for x32-specific syscalls.
++
++548	64	writer			sys_writer
++549	64	reader			sys_reader
+diff --git a/kernel/sys.c b/kernel/sys.c
+index 8fdac0d90..951587a62 100644
+--- a/kernel/sys.c
++++ b/kernel/sys.c
+@@ -71,7 +71,7 @@
+ #include <linux/uaccess.h>
+ #include <asm/io.h>
+ #include <asm/unistd.h>
+-
++#include <linux/semaphore.h>
+ #include "uid16.h"
+ 
+ #ifndef SET_UNALIGN_CTL
+@@ -132,6 +132,25 @@
+ # define GET_TAGGED_ADDR_CTRL()		(-EINVAL)
+ #endif
+ 
++/*
++ * this is for the assignment4. We need a few static vars lol
++ */
++struct a_node
++{
++	unsigned long dev_random; //to store number
++	char allocated; //to check if var is allocated
++	struct a_node *next;
++};
++typedef struct a_node a_node;
++#define QSIZE 16
++static a_node *k_mqueue;
++static a_node *head;
++static a_node *tail;
++static char initialized = 0x0;
++static struct semaphore writable;
++static struct semaphore readable;
++DEFINE_MUTEX(a_lock);
++
+ /*
+  * this is where the system-wide overflow UID and GID are defined, for
+  * architectures that now have 32-bit UID/GID but didn't in the past
+@@ -200,6 +219,77 @@ static int set_one_prio(struct task_struct *p, int niceval, int error)
+ 	return error;
+ }
+ 
++SYSCALL_DEFINE1(writer, unsigned long, input)
++{
++	int itr, retval;
++	mutex_lock(&a_lock);
++	if (initialized == 0)
++	{
++		k_mqueue = kmalloc(sizeof(a_node)*QSIZE, GFP_KERNEL);
++		for(itr = 0; itr<QSIZE; ++itr)
++		{
++			(k_mqueue+itr)->allocated = 0;
++			(k_mqueue+itr)->next = (k_mqueue + (itr+1)%QSIZE);
++		}
++		initialized = 1;
++		head = k_mqueue;
++		tail = k_mqueue;
++		sema_init(&writable,QSIZE);
++		sema_init(&readable,0);
++	}
++	if (initialized == 1)
++	{
++		//trap syscall here
++		mutex_unlock(&a_lock); //release mutex so others can read
++		down(&writable);
++		mutex_lock(&a_lock); //reacquire mutex
++		//retval = -EAGAIN; //may change (MSG Q full)
++		
++		tail->allocated = 1;
++		tail->dev_random = input;
++		tail = tail->next;
++		retval = 0; //success
++		up(&readable);
++	}
++	else
++	{
++		//Weird error
++		printk(KERN_INFO "Weird error occured\n");
++		retval = -EPERM;
++	}
++	mutex_unlock(&a_lock); //can never dedloc
++	return retval;
++}
++
++SYSCALL_DEFINE0(reader)
++{
++	unsigned long temp;
++	int retval;
++	mutex_lock(&a_lock);
++	if(initialized==0) retval = -EAGAIN; //empty resource
++	if(initialized==1)
++	{
++		printk(KERN_INFO "Going down now\n");
++		mutex_unlock(&a_lock); //release mutex to allow writes
++		down(&readable);
++		mutex_lock(&a_lock);
++		head->allocated = 0;
++		temp = head->dev_random;
++		head = head->next;
++		retval = 0;
++		up(&writable);
++	}
++	else
++	{
++		//weird error again
++		printk(KERN_INFO "Weird reading error\n");
++		retval = -EPERM;
++	}
++	mutex_unlock(&a_lock);
++	if(retval==0) return temp;
++	else return retval;
++}
++
+ SYSCALL_DEFINE3(setpriority, int, which, int, who, int, niceval)
+ {
+ 	struct task_struct *g, *p;
