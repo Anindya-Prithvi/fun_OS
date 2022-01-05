@@ -18,6 +18,7 @@ SIGTERM signal  and thereafter send it to S1 (using kill()). ST’s SIGTERM
 signal handler should print the string supplied by ST*/
 pid_t s1;
 char* timestring;
+float procspeed;
 
 void alarmed(int signal){
     u_int32_t rd_hi;
@@ -29,7 +30,7 @@ void alarmed(int signal){
     );
     u_int64_t rd_64 = (u_int64_t) rd_hi<<32;
     rd_64 = rd_64 + rd_lo;
-    rd_64/= 2419200000; //assuming baseclock @2419.200Mhz
+    rd_64/= (long) procspeed * 1000000; //assuming baseclock @2419.200Mhz
     ///proc/cpuinfo --> new intel has constant_tsc => the rdtsc will only count cycles since start
     
 	int h = (rd_64/3600)%100; //otherwise more than 8 bytes
@@ -50,6 +51,11 @@ void termed(int signal){
 
 int main(int argc, char const *argv[]){
     if(argc==1) exit(0);
+    FILE *cmd = popen("grep -m1 'cpu MHz.*' /proc/cpuinfo", "r");
+    char* buff = malloc(sizeof(char)*100);
+    fread(buff, 1, 100, cmd);
+    sscanf(buff, "%*[^0123456789]%f%*[\n]", &procspeed);
+    fclose(cmd);
     struct itimerval initial;
     initial.it_value.tv_sec = 1;
     initial.it_value.tv_usec =  0;
