@@ -17,5 +17,5 @@ C: diningphilclassical.c
 	gcc diningphilclassical.c -o C -pthread
 
 clean:
-	rm -f M1 M2 C
+	rm -f M2 M1 C
 	

@@ -5,7 +5,7 @@ There are 3 C files, the names are descriptive.
 For classical implementation and explation see variation 2 and ignore saucebowls completely.
 
 ## Variation 1 -- 1 adjacent fork needed, any 1 out of 4 bowls needed
-1. Deadlock is not possible. At any instance of time atleast 2 diners will be able to eat. When the relinquish control, ALL the others will have a chance. The worst case will be starvation. In such a case, just bias with left/right when putting fork.
+1. Deadlock maybe possible when a philosopher takes a bowl and another takes a fork but both of them wait for each other to relinquish. To resolve the deadlock, just sequentialize it. Or, put a counting semaphore on the sauce bowls.
 
 ## Variation 2 -- both adjacent forks needed, any 1 out of 4 bowls needed
 1. Deadlock possible during fork selection. i.e. same as the description in the given pdf. (Each philosopher takes their left fork only and wait eternally to get the right one//same with right fork).
