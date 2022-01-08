@@ -1,7 +1,7 @@
 Hello and welcome. You must C everywhere to find what you need in the CSE231 course. Here are my attempts. Feel free to break your system (or not ;))
 
 ## Directories and navigation:
-- The names are pretty decriptive. Here are the direct links:
+- The names are pretty descriptive. Here are the direct links:
   - [A1](https://github.com/Anindya-Prithvi/fun_OS/tree/main/Assignment1)
     - [A1/q1](https://github.com/Anindya-Prithvi/fun_OS/tree/main/Assignment1/q1)
     - [A1/q2](https://github.com/Anindya-Prithvi/fun_OS/tree/main/Assignment1/q2)
